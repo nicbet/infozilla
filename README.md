@@ -11,6 +11,18 @@ gradle run --args="demo/demo0001.txt"
 ## Building
 Building the infoZilla tool requires `gradle` 4 or newer. Run `gradle tasks` for an overview.
 
+## Usage
+```
+Usage: infozilla [-clps] [--charset=<inputCharset>] FILE...
+      FILE...              File(s) to process.
+      --charset=<inputCharset>
+                           Character Set of Input (default=ISO-8859-1)
+  -c, --with-source-code   Process and extract source code regions (default=true)
+  -l, --with-lists         Process and extract lists (default=true)
+  -p, --with-patches       Process and extract patches (default=true)
+  -s, --with-stacktraces   Process and extract stacktraces (default=true)
+```
+
 ## Citing
 If you like the tool and find it useful, feel free to cite the original research work:
 ```
