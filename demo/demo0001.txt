@@ -1,0 +1,251 @@
+Discussion ECLIPSE BUG 39887
+
+Wassim Melhem 2003-07-10 14:27:07 EDT
+Build: I-20030710
+I found the exception pasted below in my log file.  Note that 
+org.eclipse.debug.core/.classpath is indeed in my workspace.
+
+Error Jul 10, 2003 23:09:32.534 Exception while 
+retrieving /org.eclipse.debug.core/.classpath, will revert to default classpath
+org.eclipse.core.internal.resources.ResourceException: 
+Resource /org.eclipse.debug.core/.classpath is not local.
+at org.eclipse.core.internal.resources.Resource.checkLocal(Resource.java:313)
+at org.eclipse.core.internal.resources.File.getContents(File.java:213)
+at org.eclipse.jdt.internal.core.Util.getResourceContentsAsByteArray
+(Util.java:671)
+at org.eclipse.jdt.internal.core.JavaProject.getSharedProperty
+(JavaProject.java:1793)
+at org.eclipse.jdt.internal.core.JavaProject.readClasspathFile
+(JavaProject.java:2089)
+at org.eclipse.jdt.internal.core.JavaProject.getRawClasspath
+(JavaProject.java:1579)
+at org.eclipse.jdt.internal.core.search.indexing.IndexAllProject.execute
+(IndexAllProject.java:77)
+at org.eclipse.jdt.internal.core.search.processing.JobManager.run
+(JobManager.java:371)
+at java.lang.Thread.run(Unknown Source)
+Comment 1 Philippe Mulet 2003-07-14 07:51:18 EDT
+Exceptions come from platform, the file claims to not be local.
+How did the classpath file get created ? Imported through CVS or created 
+through PDE import ?
+
+Comment 2 Wassim Melhem 2003-07-14 09:56:12 EDT
+The classpath file in question was created during the PDE import operation.
+
+Comment 3 Frederic Fusier 2003-08-29 12:02:39 EDT
+
+*** Bug 41859 has been marked as a duplicate of this bug. ***
+
+Comment 4 Frederic Fusier 2003-09-01 06:26:46 EDT
+Hello Wassim,
+Wasn't it funny to work again together in Eclipse project after WMQI? ;)
+I'm currently tracking this bug but have lot of difficulties to recreate it. 
+I've imported 58 external plugins several times and never got this exception...
+Would it be possible to have your test case or a more precise idea of a 
+scenario to reproduce this problem and have a chance to understand what happen 
+here?
+Thanks
+
+Comment 5 Wassim Melhem 2003-09-01 14:50:48 EDT
+Frederic,
+You and I worked on the same project such a long time ago that WMQI was still 
+called MQSI ;-)
+
+This bug is difficult to reproduce, as I think it has to do with timing.  
+However, it did happen to me more than once.
+
+I think this bug has to do with the two-stage plug-in import operation, and 
+the fact that half-way through the operation, JDT core and PDE are fighting 
+for cpu time.
+
+Below is a modified excerpt of a note that I sent to Philippe as a follow-up 
+to the then-critical bug 37274.  The note explains what happens during import, 
+and with an appendix explaining what I think could be causing this particular 
+bug.
+
+
+Here is a breakdown of the activities that take place during the plug-in 
+import operation:
+
+1. If autobuilding is on, we turn it off.
+
+2. We import all the plug-ins selected in the import wizard and create a Java 
+project for each plug-in that contains libraries.  Note that at this step, we 
+used to clear the classpath of the freshly created Java project because we 
+will correctly set it at a later step.  However, just before we released 2.1, 
+Philippe suggested in bug report 34574 that we do not flush the classpath 
+completely.  So we stopped flushing the classpath at this point, and this 
+introduced the transient error markers that we now see in the Problems view in 
+the middle of the operation.  Since these error markers go away later in step 
+3 when we set the classpath, we regarded them as benign, yet still annoying, 
+intermediary entities.  This step is done in an IWorkspace.run
+(IWorkspaceRunnable, IProgressMonitor) operation.
+
+3. We set the classpath of all the projects that were succesfully imported 
+into the workspace. This step has to be done in a subsequent IWorkspace.run
+(IWorkspaceRunnable, IProgressMonitor) operation for an accurate classpath 
+computation.  i.e. the Java projects from step 2 have to become part of the 
+workspace before we set their classpath.
+
+4.  If we had turned autobuilding off in step 1, we turn it back on and invoke 
+a build via PDEPlugin.getWorkspace().build
+(IncrementalProjectBuilder.INCREMENTAL_BUILD,new SubProgressMonitor
+(monitor,1));
+
+Note that after step 2, JDT core and PDE start doing stuff simultaneously and 
+competing for CPU (bug 31592).  JDT starts the indexing work, while PDE starts 
+setting classpaths.  So what I think might happening in this instance is that 
+JDT wants to index the classpath file for org.eclipse.debug.core before PDE 
+had a chance to create it or set it.
+
+Comment 6 Philippe Mulet 2003-09-03 05:58:08 EDT
+What is suspicious though is that if you did not flush the classpath, then the 
+file should live on disk, and should be readable. However the platform refuses 
+to let us access it.
+
+Anyway, since this is only a logging problem, and we believe our indexer 
+activity should be fault tolerant (given it is running after the fact), we 
+modified our code to be more resilient in this scenario, and stop logging this 
+problem, which isn't one in the end.
+
+Fixed
+
+Comment 7 Frederic Fusier 2003-09-03 11:54:25 EDT
+While testing PDE external plugins import, I got another similar exception in 
+the indexer:
+!ENTRY org.eclipse.jdt.core 4 4 Sep 03, 2003 17:02:24.860
+!MESSAGE Exception while retrieving /org.eclipse.jdt.launching/.classpath, will 
+revert to default classpath
+!STACK 1
+org.eclipse.core.internal.resources.ResourceException: 
+Resource /org.eclipse.jdt.launching/.classpath is not local.
+	at org.eclipse.core.internal.resources.Resource.checkLocal
+(Resource.java:307)
+	at org.eclipse.core.internal.resources.File.getContents(File.java:213)
+	at org.eclipse.jdt.internal.core.Util.getResourceContentsAsByteArray
+(Util.java:677)
+	at org.eclipse.jdt.internal.core.JavaProject.getSharedProperty
+(JavaProject.java:1809)
+	at org.eclipse.jdt.internal.core.JavaProject.readClasspathFile
+(JavaProject.java:2105)
+	at org.eclipse.jdt.internal.core.JavaProject.getRawClasspath
+(JavaProject.java:1593)
+	at org.eclipse.jdt.internal.core.JavaProject.getRawClasspath
+(JavaProject.java:1583)
+	at org.eclipse.jdt.internal.core.JavaProject.getOutputLocation
+(JavaProject.java:1375)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexAllProject.execute
+(IndexAllProject.java:90)
+	at org.eclipse.jdt.internal.core.search.processing.JobManager.run
+(JobManager.java:375)
+	at java.lang.Thread.run(Thread.java:536)
+!ENTRY org.eclipse.core.resources 4 369 Sep 03, 2003 17:02:24.860
+!MESSAGE Resource /org.eclipse.jdt.launching/.classpath is not local.
+
+Comment 8 Frederic Fusier 2003-09-03 11:56:53 EDT
+Created attachment 5960 [details]
+Fix also exception raised while getting output location
+
+We have similar problem with output location than with raw classpath getter
+=> apply similar solution.
+
+Comment 9 Frederic Fusier 2003-09-04 05:07:16 EDT
+Wassim,
+
+About the unnecessary markers displayed between step2 and step3, there's 
+nothing we can do avoid them as the projects were created without classpath 
+during step 2. At the end of the operation performed while this step, a 
+PRE_AUTO_BUILD event is sent and processed by our DeltaProcessor which 
+refreshes all markers of resources concerned by the delta.
+
+As these resources are the created and they have no .classpath file, there's 
+automatically a  marker created to signal this problem.
+
+I think there are two solutions here to have these markers not displayed:
+
+1) perform the import in only one operation as suggested by bug 31592
+2) add a temporary .classpth to the project to avoid markers creation while 
+treating PRE_AUTO_BUILD event between the two operation
+
+
+I'm not sure if solution 1) is possible, but I've made a try to implement 
+solution 2) by modifying method createProject(...) in PluginImportOperation 
+class.
+I've replace following code:
+if (isJavaProject) {
+	/*IJavaProject jProject = JavaCore.create(project);
+	if (jProject.getRawClasspath() != null
+		&& jProject.getRawClasspath().length > 0)
+		jProject.setRawClasspath(new IClasspathEntry[0], monitor);*/
+	modelIds.add(model.getPluginBase().getId());
+}
+
+with:
+if (isJavaProject) {
+	IJavaProject jProject = JavaCore.create(project);
+	jProject.setRawClasspath(new IClasspathEntry[0], project.getFullPath(), 
+monitor);
+	modelIds.add(model.getPluginBase().getId());
+}
+
+And it seems to work properly (import does not hang and no markers are 
+displayed bewteen two steps).
+
+May you let me know if you get same result with this change?
+
+Thanks
+
+Comment 10 Frederic Fusier 2003-09-04 05:19:40 EDT
+Wassim,
+
+About markers displayed between step 2 and step 3 there's nothing to do on our 
+side about it. At the end of step 2, a PRE_AUTO_BUILD event is sent by the 
+running operation and processed by our DeltaProcessor which refreshes markers.
+
+As project were created in step 2 without classpath, then we correctly create a 
+markers for each concerned project that its .classpath cannot be read.
+
+As it seems necessary to keep the two separated operations, I suggest to set 
+the classpath to the created project in order to avoid these markers to be 
+displayed.
+
+I've made a try modifying createProject(...) method of PluginImportOperation.
+At the end of the method I've changed the if(isJavaProject) block as follow:
+if (isJavaProject) {
+	IJavaProject jProject = JavaCore.create(project);
+	jProject.setRawClasspath(new IClasspathEntry[0], project.getFullPath(), 
+monitor);
+	modelIds.add(model.getPluginBase().getId());
+}
+
+After that, I've made several import operation with new or replacing projects 
+and never got any dead lock nor transient error markers :)
+
+Let me know if this change could be acceptable for you, thanks
+
+Frédéric
+
+Comment 11 Philippe Mulet 2003-09-04 05:23:45 EDT
+Transient classpath problem markers are expected due to the PDE import process, 
+and should be avoided so as to improve user experience, but this is on the PDE 
+side only.
+
+Integrated fix for output location as well.
+Fixed.
+
+Comment 12 Wassim Melhem 2003-09-04 12:43:46 EDT
+Frederic,
+Your suggested fix is exactly what I had once upon time, but this solution, 
+which is perfect for me, seems to have caused unnecessary re-indexing for JDT 
+core (bug 34574).  Are you suggesting that it is no longer a problem for JDT 
+Core if I flush the classpath completely?
+
+Comment 13 Philippe Mulet 2003-09-05 06:28:36 EDT
+We think we have corrected the exposed problem on JDT side by 2.1, this being 
+said it triggers quite a lot of activity in an intermediate state, so I am no 
+longer convinced it is the best move.
+
+Still worth investigating though, as it could avoid creating transient problems.
+
+Comment 14 David Audel 2003-10-14 10:13:14 EDT
+Verified.

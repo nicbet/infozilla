@@ -1,0 +1,24 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:4.0.3'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'application'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  implementation 'info.picocli:picocli:3.9.1'
+  implementation 'org.ostermiller:utils:1.07.00'
+  implementation 'org.jdom:jdom:1.1.3'
+}
+
+mainClassName = 'io.kuy.infozilla.cli.Main'

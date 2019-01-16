@@ -1,0 +1,37 @@
+// * Java_CodeDB.txt
+// * @author Nicolas Bettenburg
+// * © 2009-2010, all rights reserved.
+// ********************************************************************
+// *  This file is part of infoZilla.                                 *
+// *                                                                  *
+// *  InfoZilla is non-free software: you may not redistribute it     *
+// *  and/or modify it without the permission of the original author. *
+// *                                                                  *
+// *  InfoZilla is distributed in the hope that it will be useful,    *
+// *  but WITHOUT ANY WARRANTY; without even the implied warranty of  *
+// *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.            *
+// ********************************************************************
+// *
+// *
+// * Identifier is always [a-zA-z_][a-zA-Z0-9_]*
+// * Dot Identifier is always identifier (.identfier)*
+// Import declarations
+"import","(?m)^\\s*import.*;$"
+// Package declarations
+"package","(?m)^package.*;$"
+// Single line comments
+"singlecomment","(?m)^\\s*//.*[\\n\\r]"
+// multi line comments (also covers javadoc)
+"multicomment","(?m)(?s)^\\s*(/\\*).*?(\\*/)"
+// class declaration, uses MATCH on curly brackets
+"class","(?m)^.*?class.*?([\\n\\r])?\\{","MATCH"
+// Assignment operations
+"assignment","(?m)^.*=.*;$"
+// If statements, uses MATCH on curly brackets
+"ifstatement", "(?m)^.*?if\\s*\\(.*?\\)\\s*\\{", "MATCH"
+// Else statements, uses MATCH on curly brackets
+"elsestatement", "(?m)^.*?else\\s*\\{", "MATCH"
+// Function declarations, uses MATCH on curly brackets
+"functiondef", "(?m)^.*?([a-zA-Z_][a-zA-Z0-9_\\$])+(\\.[a-zA-Z0-9_\\$]+)*\\s*\\(.*?\\).*?([\\n\\r])?\\{", "MATCH"
+// Function Call like someClass.someMethod().anotherMethod("parameters").getSomething(<name>);
+"functioncall", "(?m)^.*\\(.*?\\).*?;$"

@@ -1,0 +1,50 @@
+abstract			// MODIFIER
+continue
+for					// for WS* ( EXP* ) WS* { EXP* }
+new
+switch				// switch WS* ( ID ) WS* { EXP* }
+assert				// assert WS* ( EXP )
+default				// default: EXP* WS*; WS* break WS*;
+goto				// not used
+package				// package WS* DOTID WS*;
+synchronized		// MODIFIER
+boolean
+do					// do WS* { EXP* } WS* while WS* ( EXP ) WS*;
+if					// if  WS* ( EXP ) WS* { EXP* }
+private
+this
+break
+double
+implements
+protected			// MODIFIER
+throw
+byte
+else				// else WS* { EXP* }
+import				// import WS* DOTID WS*;
+public				// MODIFIER
+throws
+case				// case WS* VAL: WS* EXP WS*; WS* break WS*;
+enum
+instanceof
+return				// return WS* ( EXP ) WS*;
+transient
+catch				// catch WS* { EXP* }
+extends
+int
+short
+try					// try WS* { EXP* }
+char
+final
+interface
+static
+void
+class				// MODIFIER class WS* ID WS* [EXTENSION] WS* { EXP* }
+finally
+long
+strictfp
+volatile
+const
+float
+native
+super				// super WS* ( EXP ) WS*;
+while
